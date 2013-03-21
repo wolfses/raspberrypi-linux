@@ -86,12 +86,18 @@ ENTRY(stext)
 	setmode	PSR_F_BIT | PSR_I_BIT | SVC_MODE, r9 @ ensure svc mode
 						@ and irqs disabled
 	mrc	p15, 0, r9, c0, c0		@ get processor id
+						@ ## 프로세서 ID를 가져와 r9 에 저장
 	bl	__lookup_processor_type		@ r5=procinfo r9=cpuid
+						@ ## 만약에 r5에 0이 있다면, CPSR의
+						@ ## zero flag영역이 셋이 될것이다.
+						@ ## r5가 0이라는 것은,
+						@ ## __lookup_processor_type 레이블에서
+						@ ## 해당 프로세서를 찾지 못했다는 것이다.
 	movs	r10, r5				@ invalid processor (r5=0)?
  THUMB( it	eq )		@ force fixup-able long branch encoding
 	beq	__error_p			@ yes, error 'p'
 
-#ifdef CONFIG_ARM_LPAE
+#ifdef CONFIG_ARM_LPAE				@ 정의되지 않음
 	mrc	p15, 0, r3, c0, c1, 4		@ read ID_MMFR0
 	and	r3, r3, #0xf			@ extract VMSA support
 	cmp	r3, #5				@ long-descriptor translation table format?
@@ -112,14 +118,16 @@ ENTRY(stext)
 	 * r1 = machine no, r2 = atags or dtb,
 	 * r8 = phys_offset, r9 = cpuid, r10 = procinfo
 	 */
-	bl	__vet_atags
-#ifdef CONFIG_SMP_ON_UP
+	bl	__vet_atags			@ 넘어온 atags정보의 헤더부분을 검사
+						@__vet_atags 레이블로 점프(head-common.S)
+						@ atags ==> 보드 정보를 담은 구조체의 포인터
+#ifdef CONFIG_SMP_ON_UP				@ 정의되지 않음
 	bl	__fixup_smp
 #endif
-#ifdef CONFIG_ARM_PATCH_PHYS_VIRT
+#ifdef CONFIG_ARM_PATCH_PHYS_VIRT		@ 정의되지 않음
 	bl	__fixup_pv_table
 #endif
-	bl	__create_page_tables
+	bl	__create_page_tables		@임시로 사용할 페이지 테이블을 생성
 
 	/*
 	 * The following calls CPU specific code in a position independent
@@ -130,9 +138,19 @@ ENTRY(stext)
 	 */
 	ldr	r13, =__mmap_switched		@ address to jump to after
 						@ mmu has been enabled
+						@ r13 = __switch_data의 주소
 	adr	lr, BSYM(1f)			@ return (PIC) address
+						@ lr = __enable_mmu의 주소
 	mov	r8, r4				@ set TTBR1 to swapper_pg_dir
- ARM(	add	pc, r10, #PROCINFO_INITFUNC	)
+ ARM(	add	pc, r10, #PROCINFO_INITFUNC	)	@ add     pc, r10, #PROCINFO_INITFUNC
+						/* r10은 __lookup_processor_type 에 의해서 선택된 프로세서 정보 구조체를 가리킴
+						* PROCINFO_INITFUNC는 include/generated/asm-offsets.h:62에 정의되어있
+						*
+						* 결과적으로 프로세서 정보 구조체의 Initfunction의 오프셋이 되어
+						* pc는 해당 프로세서의 초기화함수로 점프하게 된다.
+						* 6410은 arm11xx 코어를 사용하고 이 코어는 ARMv6기반이므로(맞나요?)
+						* \arch\arm\mm\proc-v6.S에 __v6_setup 레이블로 점프하게 되겠다.
+						*/
  THUMB(	add	r12, r10, #PROCINFO_INITFUNC	)
  THUMB(	mov	pc, r12				)
 1:	b	__enable_mmu
@@ -402,6 +420,20 @@ __enable_mmu:
 	mov	r5, #0
 	mcrr	p15, 0, r4, r5, c2		@ load TTBR0
 #else
+/* domain_val(A,B)는 A를 B*2비트만큼 left shift하는 매크로이며
+*  arch/arm/include/asm/domain.h에 다음과 같이 정의되어 있다.
+* #define domain_val(dom,type) ((type) << (2*(dom)))
+* 매크로에 쓰인 각 값은 위 파일에 정의되어 있으며
+* 이 값은 #ifndef CONFIG_IO_36에 의해 갈리게 된다.
+* CONFIG로 시작하는 것은 커널 설정에서 설정되는 값인거 같은데
+* 36bit I/O와 관련된 듯 싶습니다. mm/Kconfig를 확인해주세요.
+* CONFIG_IO_36일 경우
+* (3 << 2*1)|(3 << 2*2)|(3 << 2*2)|(1 <<2*0) -> 1100 | 11 0000 | 11 0000 | 1 -> 11 1101 -> 0x3D
+* 아닐 경우(ifndef)
+* (3 << 2*1)|(3 << 2*0)|(3 << 2*0)|(1 <<2*2) -> 1100 | 11 | 11 | 1 0000 -> 1 1111 -> 0x1F
+*
+* 설정된 도메인 값과 시작주소를 각각의 컨트롤레지스터(c3,c2)에 로드한다.
+*/
 	mov	r5, #(domain_val(DOMAIN_USER, DOMAIN_MANAGER) | \
 		      domain_val(DOMAIN_KERNEL, DOMAIN_MANAGER) | \
 		      domain_val(DOMAIN_TABLE, DOMAIN_MANAGER) | \
@@ -436,7 +468,7 @@ ENTRY(__turn_mmu_on)
 	instr_sync
 	mov	r3, r3
 	mov	r3, r13
-	mov	pc, r3
+	mov	pc, r3				@ head-common.S의 __mmap_switched로 점프
 __turn_mmu_on_end:
 ENDPROC(__turn_mmu_on)
 	.popsection
