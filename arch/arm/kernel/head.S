@@ -173,10 +173,19 @@ ENDPROC(stext)
  *  r4 = physical page table address
  */
 __create_page_tables:
+/* 임시로 사용할 페이지 테이블을 0으로 초기화한 후 다시 매핑하는 기능을 한다.
+ *
+ * pgtbl은 매크로임 파일 위에 다음과 같이 정의됨.
+ * .macro      pgtbl, rd
+ * ldr \rd, =(KERNEL_RAM_PADDR - 0x4000)
+ *
+ * pgtbl은 인자 rd를 받는데 rd에는 페이지 디렉토리의 시작주소가 들어감
+ */
 	pgtbl	r4, r8				@ page table address
 
 	/*
 	 * Clear the swapper page table
+	 * page table의 모든 엔트리를 순회하면서 전부 0으로 초기화 함
 	 */
 	mov	r0, r4
 	mov	r3, #0
@@ -207,11 +216,16 @@ __create_page_tables:
 	add	r4, r4, #0x1000			@ point to the PMD tables
 #endif
 
-	ldr	r7, [r10, #PROCINFO_MM_MMUFLAGS] @ mm_mmuflags
+	ldr	r7, [r10, #PROCINFO_MM_MMUFLAGS] @ mm_mmuflags값을 가져온다.
 
 	/*
 	 * Create identity mapping to cater for __enable_mmu.
 	 * This identity mapping will be removed by paging_init().
+	 */
+
+	/* 현재 이 파일 head.S는 압축풀린 커널의 선두에 존재할 것이며(아마도)
+	 * 커널은 0xC0008000에 압축이 풀리게 되므로
+	 * 아래에서 pc를 계산할때 상위 12비트는 여전히 0xC00일것이다라고 생각할 수 있다.
 	 */
 	adr	r0, __turn_mmu_on_loc
 	ldmia	r0, {r3, r5, r6}
