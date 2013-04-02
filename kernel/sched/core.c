@@ -2038,6 +2038,11 @@ asmlinkage void schedule_tail(struct task_struct *prev)
 		put_user(task_pid_vnr(current), current->set_child_tid);
 }
 
+void yhc_switch_to(struct task_struct *prev, struct task_struct *next, struct task_struct *last)
+{
+	
+}
+
 /*
  * context_switch - switch to the new MM and the new
  * thread's register state.
@@ -2079,6 +2084,9 @@ context_switch(struct rq *rq, struct task_struct *prev,
 #ifndef __ARCH_WANT_UNLOCKED_CTXSW
 	spin_release(&rq->lock.dep_map, 1, _THIS_IP_);
 #endif
+
+	//YHC's switch_to
+	yhc_switch_to(prev,next,prev);
 
 	/* Here we just switch the register state and the stack. */
 	switch_to(prev, next, prev);
