@@ -210,7 +210,7 @@ void cpu_idle(void)
 			} else if (!need_resched()) {
 				stop_critical_timings();
 				if (cpuidle_idle_call())
-					pm_idle();
+					pm_idle();		//전력을 낮춰줌
 				start_critical_timings();
 				/*
 				 * pm_idle functions must always
@@ -220,7 +220,7 @@ void cpu_idle(void)
 			} else
 				local_irq_enable();
 		}
-		leds_event(led_idle_end);
+		leds_event(led_idle_end);	//LED를 제어해 휴면상태를 빠져나가는 것을 알림
 		rcu_idle_exit();
 		tick_nohz_idle_exit();
 		schedule_preempt_disabled();
