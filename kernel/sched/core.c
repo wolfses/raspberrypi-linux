@@ -2038,11 +2038,15 @@ asmlinkage void schedule_tail(struct task_struct *prev)
 		put_user(task_pid_vnr(current), current->set_child_tid);
 }
 
-void yhc_switch_to(struct task_struct *prev, struct task_struct *next, struct task_struct *last)
+struct task_struct* yhc_switch_to(struct task_struct *prev, struct task_struct *next)
 {
-	
+	return prev;
 }
 
+struct task_struct* yhc_switch_mm(struct mm_struct *prev,struct mm_struct *next,struct task_struct *tsk)
+{
+	return tsk;
+}
 /*
  * context_switch - switch to the new MM and the new
  * thread's register state.
@@ -2068,8 +2072,11 @@ context_switch(struct rq *rq, struct task_struct *prev,
 		next->active_mm = oldmm;
 		atomic_inc(&oldmm->mm_count);
 		enter_lazy_tlb(oldmm, next);
-	} else
+	} else {
+		//YHC's switch_mm
+		next = yhc_switch_mm(oldmm, mm, next);
 		switch_mm(oldmm, mm, next);
+	}
 
 	if (!prev->mm) {
 		prev->active_mm = NULL;
@@ -2086,8 +2093,7 @@ context_switch(struct rq *rq, struct task_struct *prev,
 #endif
 
 	//YHC's switch_to
-	yhc_switch_to(prev,next,prev);
-
+	prev = yhc_switch_to(prev,next);
 	/* Here we just switch the register state and the stack. */
 	switch_to(prev, next, prev);
 
