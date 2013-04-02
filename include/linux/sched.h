@@ -1233,7 +1233,7 @@ enum perf_event_task_context {
 
 struct task_struct {
 	volatile long state;	/* -1 unrunnable, 0 runnable, >0 stopped */
-	void *stack;
+	void *stack;		//커널용 스택
 	atomic_t usage;
 	unsigned int flags;	/* per process flags, defined below */
 	unsigned int ptrace;
@@ -1296,7 +1296,7 @@ struct task_struct {
 	struct plist_node pushable_tasks;
 #endif
 
-	struct mm_struct *mm, *active_mm;
+	struct mm_struct *mm, *active_mm;	//메모리 관리
 #ifdef CONFIG_COMPAT_BRK
 	unsigned brk_randomized:1;
 #endif
@@ -1322,8 +1322,8 @@ struct task_struct {
 	unsigned sched_reset_on_fork:1;
 	unsigned sched_contributes_to_load:1;
 
-	pid_t pid;
-	pid_t tgid;
+	pid_t pid;	// 프로세스 ID
+	pid_t tgid;	// 쓰레드 그룹 ID
 
 #ifdef CONFIG_CC_STACKPROTECTOR
 	/* Canary value for the -fstack-protector gcc feature */
@@ -1352,7 +1352,7 @@ struct task_struct {
 	struct list_head ptrace_entry;
 
 	/* PID/PID hash table linkage. */
-	struct pid_link pids[PIDTYPE_MAX];
+	struct pid_link pids[PIDTYPE_MAX];	//스레드 ID관리
 	struct list_head thread_group;
 
 	struct completion *vfork_done;		/* for vfork() */
