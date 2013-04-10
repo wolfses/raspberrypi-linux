@@ -215,7 +215,6 @@ SECTIONS
 		__init_end = .;
 #endif
 
-		NOSAVE_DATA
 		CACHELINE_ALIGNED_DATA(L1_CACHE_BYTES)
 		READ_MOSTLY_DATA(L1_CACHE_BYTES)
 
@@ -238,6 +237,7 @@ SECTIONS
 		_edata = .;
 	}
 	_edata_loc = __data_loc + SIZEOF(.data);
+	NOSAVE_DATA
 
 #ifdef CONFIG_HAVE_TCM
         /*
